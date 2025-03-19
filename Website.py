@@ -9,6 +9,7 @@ import folium
 from streamlit_folium import folium_static
 from PIL import Image
 import base64
+from datetime import datetime
 
 class GlobalFinancialRegulationsHub:
     def __init__(self):
@@ -760,58 +761,58 @@ class GlobalFinancialRegulationsHub:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+    
     def create_footer(self):
-        """Create application footer with links and copyright"""
-        st.markdown("""
-        <div class="footer">
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
-                <div>
-                    <div class="footer-title">Regional Hubs</div>
-                    <div class="footer-links">
-        <div class="footer-links">
-                        <a href="#">North America</a>
-                        <a href="#">European Union</a>
-                        <a href="#">United Kingdom</a>
-                        <a href="#">Asia Pacific</a>
-                        <a href="#">Middle East</a>
-                    </div>
-                </div>
-                <div>
-                    <div class="footer-title">Resources</div>
-                    <div class="footer-links">
-                        <a href="#">Regulatory Database</a>
-                        <a href="#">Compliance Tools</a>
-                        <a href="#">Policy Analyses</a>
-                        <a href="#">Events & Webinars</a>
-                    </div>
-                </div>
-                <div>
-                    <div class="footer-title">Company</div>
-                    <div class="footer-links">
-                        <a href="#">About Us</a>
-                        <a href="#">Our Team</a>
-                        <a href="#">Careers</a>
-                        <a href="#">Contact Us</a>
-                    </div>
-                </div>
-                <div>
-                    <div class="footer-title">Legal</div>
-                    <div class="footer-links">
-                        <a href="#">Terms of Service</a>
-                        <a href="#">Privacy Policy</a>
-                        <a href="#">Cookie Policy</a>
-                        <a href="#">Disclaimer</a>
-                    </div>
+    """Create application footer with links and copyright"""
+    st.markdown("""
+    <div class="footer">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+            <div>
+                <div class="footer-title">Regional Hubs</div>
+                <div class="footer-links">
+                    <a href="#">North America</a>
+                    <a href="#">European Union</a>
+                    <a href="#">United Kingdom</a>
+                    <a href="#">Asia Pacific</a>
+                    <a href="#">Middle East</a>
                 </div>
             </div>
-            
-            <div class="footer-separator"></div>
-            
-            <div class="footer-copyright">
-                © {datetime.now().year} Global Financial Regulations Hub. All rights reserved.
+            <div>
+                <div class="footer-title">Resources</div>
+                <div class="footer-links">
+                    <a href="#">Regulatory Database</a>
+                    <a href="#">Compliance Tools</a>
+                    <a href="#">Policy Analyses</a>
+                    <a href="#">Events & Webinars</a>
+                </div>
+            </div>
+            <div>
+                <div class="footer-title">Company</div>
+                <div class="footer-links">
+                    <a href="#">About Us</a>
+                    <a href="#">Our Team</a>
+                    <a href="#">Careers</a>
+                    <a href="#">Contact Us</a>
+                </div>
+            </div>
+            <div>
+                <div class="footer-title">Legal</div>
+                <div class="footer-links">
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Cookie Policy</a>
+                    <a href="#">Disclaimer</a>
+                </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        
+        <div class="footer-separator"></div>
+        
+        <div class="footer-copyright">
+            © {datetime.now().year} Global Financial Regulations Hub. All rights reserved.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     app = GlobalFinancialRegulationsHub()
