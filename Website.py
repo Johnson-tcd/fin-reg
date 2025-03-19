@@ -1,20 +1,24 @@
-import tkinter as tk
-from tkinter import ttk, font, messagebox
-import json
-import webbrowser
-from PIL import Image, ImageTk
+import streamlit as st
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import json
 from matplotlib import colors
-from mpl_toolkits.basemap import Basemap
+import matplotlib.cm as cm
+import folium
+from streamlit_folium import folium_static
+from PIL import Image
+import base64
 
 class GlobalFinancialRegulationsHub:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Global Financial Regulations Hub")
-        self.root.geometry("1200x800")
-        self.root.configure(background="#f8f8f8")
+    def __init__(self):
+        # Set page config
+        st.set_page_config(
+            page_title="Global Financial Regulations Hub",
+            page_icon="⚖️",
+            layout="wide",
+            initial_sidebar_state="expanded",
+        )
         
         # Define colors
         self.colors = {
@@ -113,569 +117,701 @@ class GlobalFinancialRegulationsHub:
             }
         ]
         
-        # Create custom fonts
-        self.define_fonts()
+        # Set session state for login status if not exists
+        if 'logged_in' not in st.session_state:
+            st.session_state['logged_in'] = False
+            
+        if 'username' not in st.session_state:
+            st.session_state['username'] = ""
+            
+        if 'selected_region' not in st.session_state:
+            st.session_state['selected_region'] = None
         
-        # Create main content
-        self.create_ui()
+        # Create the app
+        self.create_app()
     
-    def define_fonts(self):
-        """Define custom fonts for the application"""
-        self.header_font = font.Font(family="Segoe UI", size=16, weight="bold")
-        self.title_font = font.Font(family="Segoe UI", size=14, weight="bold")
-        self.subtitle_font = font.Font(family="Segoe UI", size=12, weight="bold")
-        self.normal_font = font.Font(family="Segoe UI", size=10)
-        self.small_font = font.Font(family="Segoe UI", size=9)
-    
-    def create_ui(self):
-        """Create the main user interface"""
+    def create_app(self):
+        """Create the Streamlit app layout"""
+        # Custom CSS
+        self.apply_custom_css()
+        
+        # Create sidebar
+        self.create_sidebar()
+        
         # Create header
         self.create_header()
         
-        # Create main content frame
-        main_frame = tk.Frame(self.root, bg=self.colors["background"], padx=20, pady=20)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Create hero section
-        self.create_hero_section(main_frame)
-        
-        # Create globe visualization
-        self.create_globe_visualization(main_frame)
-        
-        # Create news section
-        self.create_news_section(main_frame)
+        # Create main content based on navigation
+        if st.session_state.get('page', 'home') == 'home':
+            self.create_home_page()
+        elif st.session_state['page'] == 'regions':
+            self.create_regions_page()
+        elif st.session_state['page'] == 'news':
+            self.create_news_page()
+        elif st.session_state['page'] == 'resources':
+            self.create_resources_page()
+        elif st.session_state['page'] == 'about':
+            self.create_about_page()
         
         # Create footer
         self.create_footer()
     
+    def apply_custom_css(self):
+        """Apply custom CSS styles"""
+        st.markdown("""
+        <style>
+        .main {
+            background-color: #f8f8f8;
+        }
+        .stApp {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #4a1c61;
+            padding: 1.5rem;
+            color: white;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-title {
+            display: flex;
+            align-items: center;
+        }
+        .hero-section {
+            text-align: center;
+            padding: 2rem 0;
+        }
+        .section-title {
+            color: #4a1c61;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .news-card {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 0.5rem;
+            padding: 0;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        .news-header {
+            background-color: #6a2c91;
+            color: white;
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .news-body {
+            padding: 1rem;
+        }
+        .news-title {
+            color: #4a1c61;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .news-date {
+            color: #777;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        .region-tag {
+            background-color: #d4af37;
+            color: #4a1c61;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .read-more {
+            color: #6a2c91;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #4a1c61;
+            color: white;
+            padding: 2rem 1rem 1rem 1rem;
+            margin-top: 3rem;
+            border-radius: 0.5rem;
+        }
+        .footer-title {
+            color: #d4af37;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        .footer-separator {
+            border-top: 1px solid #6a2c91;
+            margin: 1.5rem 0;
+        }
+        .footer-copyright {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        .login-btn {
+            background-color: #d4af37;
+            color: #4a1c61;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .stButton>button {
+            background-color: #6a2c91;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+        }
+        div[data-testid="stExpander"] div[role="button"] p {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #4a1c61;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    def create_sidebar(self):
+        """Create sidebar with navigation and login"""
+        with st.sidebar:
+            st.markdown("### Navigation")
+            
+            # Navigation buttons
+            if st.button("🏠 Home", key="nav_home"):
+                st.session_state['page'] = 'home'
+                st.experimental_rerun()
+                
+            if st.button("🌎 Regional Hubs", key="nav_regions"):
+                st.session_state['page'] = 'regions'
+                st.experimental_rerun()
+                
+            if st.button("📰 Latest Updates", key="nav_news"):
+                st.session_state['page'] = 'news'
+                st.experimental_rerun()
+                
+            if st.button("📚 Resources", key="nav_resources"):
+                st.session_state['page'] = 'resources'
+                st.experimental_rerun()
+                
+            if st.button("ℹ️ About Us", key="nav_about"):
+                st.session_state['page'] = 'about'
+                st.experimental_rerun()
+            
+            st.markdown("---")
+            
+            # Login form
+            if not st.session_state['logged_in']:
+                st.markdown("### Account Access")
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Login"):
+                        if username and password:
+                            # In a real app, authenticate against a database
+                            st.session_state['logged_in'] = True
+                            st.session_state['username'] = username
+                            st.success(f"Welcome back, {username}!")
+                            st.experimental_rerun()
+                        else:
+                            st.error("Please enter both username and password")
+                
+                with col2:
+                    if st.button("Register"):
+                        if username and password:
+                            # In a real app, register in a database
+                            st.success(f"Account created for {username}. You can now log in.")
+                        else:
+                            st.error("Please enter both username and password")
+            else:
+                st.markdown(f"### Welcome, {st.session_state['username']}!")
+                if st.button("Logout"):
+                    st.session_state['logged_in'] = False
+                    st.session_state['username'] = ""
+                    st.experimental_rerun()
+    
     def create_header(self):
         """Create the application header"""
-        header_frame = tk.Frame(self.root, bg=self.colors["purple_dark"], padx=15, pady=10)
-        header_frame.pack(fill=tk.X)
-        
-        # Logo and title
-        logo_frame = tk.Frame(header_frame, bg=self.colors["purple_dark"])
-        logo_frame.pack(side=tk.LEFT)
-        
-        logo_label = tk.Label(logo_frame, text="⚖️", font=font.Font(size=20), bg=self.colors["purple_dark"], fg=self.colors["gold"])
-        logo_label.pack(side=tk.LEFT, padx=(0, 10))
-        
-        title_label = tk.Label(logo_frame, text="Global Financial Regulations Hub", font=self.header_font, bg=self.colors["purple_dark"], fg=self.colors["text_light"])
-        title_label.pack(side=tk.LEFT)
-        
-        # Login button
-        login_button = tk.Button(
-            header_frame, 
-            text="Login / Register", 
-            bg=self.colors["gold"], 
-            fg=self.colors["purple_dark"],
-            font=self.normal_font,
-            padx=15,
-            pady=5,
-            relief=tk.FLAT,
-            command=self.show_login_dialog
-        )
-        login_button.pack(side=tk.RIGHT)
+        st.markdown("""
+        <div class="header">
+            <div class="logo-title">
+                <span style="font-size: 2rem; margin-right: 10px;">⚖️</span>
+                <h1 style="margin: 0; color: white;">Global Financial Regulations Hub</h1>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    def create_hero_section(self, parent):
-        """Create the hero section with title and description"""
-        hero_frame = tk.Frame(parent, bg=self.colors["background"], pady=20)
-        hero_frame.pack(fill=tk.X)
+    def create_home_page(self):
+        """Create the home page content"""
+        # Hero section
+        st.markdown("""
+        <div class="hero-section">
+            <h2 class="section-title">Your Global Financial Regulation Center</h2>
+            <p>Stay updated with the latest financial regulations and policy changes across major economic regions.<br>
+            Our interactive platform provides real-time updates and comprehensive analysis from regulatory experts worldwide.</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Title
-        title_label = tk.Label(
-            hero_frame, 
-            text="Your Global Financial Regulation Center", 
-            font=self.header_font,
-            bg=self.colors["background"],
-            fg=self.colors["purple_dark"]
-        )
-        title_label.pack(pady=(0, 10))
+        # Interactive map
+        st.markdown('<h3 class="section-title">Interactive Financial Globe</h3>', unsafe_allow_html=True)
         
-        # Description
-        description_label = tk.Label(
-            hero_frame, 
-            text="Stay updated with the latest financial regulations and policy changes across major economic regions.\n"
-                 "Our interactive platform provides real-time updates and comprehensive analysis from regulatory experts worldwide.",
-            font=self.normal_font,
-            bg=self.colors["background"],
-            fg=self.colors["text_dark"],
-            justify=tk.CENTER,
-            wraplength=800
-        )
-        description_label.pack(pady=(0, 20))
-    
-    def create_globe_visualization(self, parent):
-        """Create interactive globe visualization using matplotlib and basemap"""
-        globe_frame = tk.Frame(parent, bg=self.colors["background"], pady=10)
-        globe_frame.pack(fill=tk.X)
+        # Create interactive map with folium
+        m = folium.Map(location=[20, 0], zoom_start=2, tiles="CartoDB dark_matter")
         
-        # Title
-        globe_title = tk.Label(
-            globe_frame,
-            text="Interactive Financial Globe",
-            font=self.subtitle_font,
-            bg=self.colors["background"],
-            fg=self.colors["purple_dark"]
-        )
-        globe_title.pack(pady=(0, 10))
-        
-        # Create matplotlib figure
-        self.fig = plt.Figure(figsize=(10, 6), facecolor='#0a0a2a')
-        self.ax = self.fig.add_subplot(111)
-        
-        # Create map using Basemap
-        self.m = Basemap(projection='ortho', lat_0=30, lon_0=0, resolution='l', ax=self.ax)
-        self.m.drawcoastlines(color='#334756', linewidth=0.5)
-        self.m.drawcountries(color='#334756', linewidth=0.5)
-        self.m.fillcontinents(color='#1a1a2e', lake_color='#0a0a2a')
-        self.m.drawmapboundary(fill_color='#0a0a2a')
-        
-        # Add region markers
+        # Add markers for each region
         for region in self.regions:
-            x, y = self.m(region["position"]["lng"], region["position"]["lat"])
-            self.m.plot(x, y, 'o', markersize=7, color=region["color"], alpha=0.8)
+            html = f"""
+            <div style="width: 300px;">
+                <h4 style="color: #4a1c61;">{region['name']}</h4>
+                <p>{region['description']}</p>
+                <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', value: '{region['name']}'}}, '*')">
+                    View Details
+                </button>
+            </div>
+            """
+            iframe = folium.IFrame(html=html, width=320, height=180)
+            popup = folium.Popup(iframe, max_width=320)
             
-        # Remove axis ticks
-        self.ax.set_xticks([])
-        self.ax.set_yticks([])
+            folium.CircleMarker(
+                location=[region["position"]["lat"], region["position"]["lng"]],
+                radius=8,
+                color=region["color"],
+                fill=True,
+                fill_color=region["color"],
+                fill_opacity=0.7,
+                popup=popup
+            ).add_to(m)
         
-        # Add title
-        self.ax.set_title('Click on a region to view details', color='white', fontsize=10)
+        # Display map
+        folium_static(m, width=1150, height=500)
         
-        # Create canvas and add to frame
-        self.canvas = FigureCanvasTkAgg(self.fig, master=globe_frame)
-        self.canvas.draw()
-        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        # Handle region selection
+        if st.session_state.get('selected_region'):
+            selected = next((r for r in self.regions if r["name"] == st.session_state['selected_region']), None)
+            if selected:
+                with st.expander(f"📍 {selected['name']} Details", expanded=True):
+                    st.markdown(f"**{selected['description']}**")
+                    st.button("View Complete Regulatory Framework", key="view_framework")
         
-        # Add interaction
-        self.canvas.mpl_connect('button_press_event', self.on_globe_click)
+        # Latest news section
+        st.markdown('<h3 class="section-title">Latest Regulation Updates</h3>', unsafe_allow_html=True)
         
-        # Info panel frame
-        self.info_panel = tk.Frame(globe_frame, bg=self.colors["purple_dark"], padx=15, pady=15, bd=1, relief=tk.SOLID)
-        self.info_panel.pack(side=tk.RIGHT, anchor=tk.NE, padx=20, pady=10)
-        self.info_panel.pack_forget()  # Hide initially
+        col1, col2 = st.columns([0.9, 0.1])
+        with col2:
+            if st.button("View All", key="view_all_updates"):
+                st.session_state['page'] = 'news'
+                st.experimental_rerun()
         
-        # Info panel content
-        self.region_title = tk.Label(
-            self.info_panel,
-            text="Region Name",
-            font=self.subtitle_font,
-            bg=self.colors["purple_dark"],
-            fg=self.colors["gold"]
-        )
-        self.region_title.pack(anchor=tk.W, pady=(0, 10))
-        
-        self.region_description = tk.Label(
-            self.info_panel,
-            text="Region description will appear here.",
-            font=self.normal_font,
-            bg=self.colors["purple_dark"],
-            fg=self.colors["text_light"],
-            wraplength=300,
-            justify=tk.LEFT
-        )
-        self.region_description.pack(anchor=tk.W, pady=(0, 10))
-        
-        self.view_details_button = tk.Button(
-            self.info_panel,
-            text="View Details",
-            bg=self.colors["gold"],
-            fg=self.colors["purple_dark"],
-            font=self.normal_font,
-            padx=10,
-            pady=5,
-            relief=tk.FLAT,
-            command=self.view_region_details
-        )
-        self.view_details_button.pack(anchor=tk.W)
+        # Display top 3 news items
+        self.display_news_items(self.news[:3])
     
-    def create_news_section(self, parent):
-        """Create the news section with regulation updates"""
-        news_frame = tk.Frame(parent, bg=self.colors["background"], pady=20)
-        news_frame.pack(fill=tk.X)
+    def create_regions_page(self):
+        """Create the regions detail page"""
+        st.markdown('<h2 class="section-title">Regional Financial Hubs</h2>', unsafe_allow_html=True)
         
-        # Header frame
-        header_frame = tk.Frame(news_frame, bg=self.colors["background"])
-        header_frame.pack(fill=tk.X, pady=(20, 15))
+        # Display regions in tabs
+        tabs = st.tabs([region["name"] for region in self.regions])
         
-        # Title
-        news_title = tk.Label(
-            header_frame,
-            text="Latest Regulation Updates",
-            font=self.title_font,
-            bg=self.colors["background"],
-            fg=self.colors["purple_dark"]
-        )
-        news_title.pack(side=tk.LEFT)
-        
-        # View all link
-        view_all_button = tk.Button(
-            header_frame,
-            text="View All Updates",
-            bg=self.colors["background"],
-            fg=self.colors["purple_medium"],
-            font=self.normal_font,
-            relief=tk.FLAT,
-            command=self.view_all_updates
-        )
-        view_all_button.pack(side=tk.RIGHT)
-        
-        # News cards container (using canvas for scrolling)
-        canvas_frame = tk.Frame(news_frame, bg=self.colors["background"])
-        canvas_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Create canvas for scrolling
-        self.news_canvas = tk.Canvas(canvas_frame, bg=self.colors["background"], highlightthickness=0)
-        self.news_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        # Add scrollbar
-        scrollbar = ttk.Scrollbar(canvas_frame, orient=tk.VERTICAL, command=self.news_canvas.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.news_canvas.configure(yscrollcommand=scrollbar.set)
-        
-        # Create inner frame for news cards
-        self.news_inner_frame = tk.Frame(self.news_canvas, bg=self.colors["background"])
-        self.news_canvas.create_window((0, 0), window=self.news_inner_frame, anchor=tk.NW)
-        
-        # Add news cards
-        self.create_news_cards()
-        
-        # Update inner frame size for scrolling
-        self.news_inner_frame.update_idletasks()
-        self.news_canvas.config(scrollregion=self.news_canvas.bbox("all"))
+        for i, tab in enumerate(tabs):
+            with tab:
+                region = self.regions[i]
+                st.markdown(f"### {region['name']}")
+                st.markdown(f"**{region['description']}**")
+                
+                # Create columns for info
+                col1, col2 = st.columns([0.6, 0.4])
+                
+                with col1:
+                    st.markdown("#### Key Regulatory Bodies")
+                    if region["name"] == "North America":
+                        st.markdown("""
+                        - **Securities and Exchange Commission (SEC)**
+                        - **Federal Reserve System**
+                        - **Commodity Futures Trading Commission (CFTC)**
+                        - **Financial Industry Regulatory Authority (FINRA)**
+                        - **Office of the Comptroller of the Currency (OCC)**
+                        """)
+                    elif region["name"] == "European Union":
+                        st.markdown("""
+                        - **European Central Bank (ECB)**
+                        - **European Banking Authority (EBA)**
+                        - **European Securities and Markets Authority (ESMA)**
+                        - **European Insurance and Occupational Pensions Authority (EIOPA)**
+                        """)
+                    else:
+                        st.markdown("- Regulatory information loading...")
+                    
+                    st.markdown("#### Recent Regulatory Developments")
+                    # Filter news for this region
+                    region_news = [n for n in self.news if n["region"] == region["name"] or 
+                                   (region["name"] == "North America" and n["region"] == "USA") or
+                                   (region["name"] == "European Union" and n["region"] == "EU")]
+                    
+                    if region_news:
+                        for news in region_news:
+                            st.markdown(f"**{news['title']}** - {news['date']}")
+                            st.markdown(f"_{news['summary']}_")
+                    else:
+                        st.markdown("No recent updates available for this region.")
+                
+                with col2:
+                    st.markdown("#### Compliance Calendar")
+                    st.markdown("""
+                    | Date | Event |
+                    | ---- | ----- |
+                    | Apr 15, 2025 | Q1 Reporting Deadline |
+                    | May 01, 2025 | New AML Rules Effective |
+                    | Jun 30, 2025 | ESG Disclosure Deadline |
+                    """)
+                    
+                    st.markdown("#### Subscribe to Updates")
+                    email = st.text_input("Email address", key=f"email_{region['name']}")
+                    if st.button("Subscribe", key=f"subscribe_{region['name']}"):
+                        if email:
+                            st.success(f"You've subscribed to {region['name']} regulatory updates!")
+                        else:
+                            st.error("Please enter a valid email address")
     
-    def create_news_cards(self):
-        """Create cards for each news item"""
-        # Configure grid layout
-        self.news_inner_frame.columnconfigure(0, weight=1)
-        self.news_inner_frame.columnconfigure(1, weight=1)
-        self.news_inner_frame.columnconfigure(2, weight=1)
+    def create_news_page(self):
+        """Create the news page with all updates"""
+        st.markdown('<h2 class="section-title">Latest Regulatory Updates</h2>', unsafe_allow_html=True)
         
-        # Add news cards in a grid
-        row, col = 0, 0
-        for i, news_item in enumerate(self.news):
-            # Calculate grid position
-            if i % 3 == 0 and i > 0:
-                row += 1
-                col = 0
+        # Add filter options
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            region_filter = st.selectbox("Filter by Region", 
+                                        ["All Regions"] + list(set(news["region"] for news in self.news)))
+        
+        with col2:
+            type_filter = st.selectbox("Filter by Type", 
+                                      ["All Types"] + list(set(news["type"] for news in self.news)))
+        
+        with col3:
+            sort_option = st.selectbox("Sort by", ["Newest First", "Oldest First"])
+        
+        # Filter and sort news
+        filtered_news = self.news.copy()
+        
+        if region_filter != "All Regions":
+            filtered_news = [n for n in filtered_news if n["region"] == region_filter]
             
-            # Create card frame
-            card_frame = tk.Frame(self.news_inner_frame, bg="white", bd=1, relief=tk.SOLID, width=350)
-            card_frame.grid(row=row, column=col, padx=10, pady=10, sticky=tk.NSEW)
-            
-            # Card header
-            card_header = tk.Frame(card_frame, bg=self.colors["purple_medium"], padx=10, pady=5)
-            card_header.pack(fill=tk.X)
-            
-            # Header content
-            header_left = tk.Label(
-                card_header,
-                text=news_item["type"],
-                font=self.small_font,
-                bg=self.colors["purple_medium"],
-                fg=self.colors["text_light"]
-            )
-            header_left.pack(side=tk.LEFT)
-            
-            # Region tag
-            region_tag = tk.Label(
-                card_header,
-                text=news_item["region"],
-                font=self.small_font,
-                bg=self.colors["gold"],
-                fg=self.colors["purple_dark"],
-                padx=5,
-                pady=1
-            )
-            region_tag.pack(side=tk.RIGHT)
-            
-            # Card body
-            card_body = tk.Frame(card_frame, bg="white", padx=15, pady=15)
-            card_body.pack(fill=tk.BOTH, expand=True)
-            
-            # News title
-            news_title = tk.Label(
-                card_body,
-                text=news_item["title"],
-                font=self.subtitle_font,
-                bg="white",
-                fg=self.colors["purple_dark"],
-                wraplength=300,
-                justify=tk.LEFT
-            )
-            news_title.pack(anchor=tk.W)
-            
-            # News date
-            news_date = tk.Label(
-                card_body,
-                text=news_item["date"],
-                font=self.small_font,
-                bg="white",
-                fg="#777777"
-            )
-            news_date.pack(anchor=tk.W, pady=(5, 10))
-            
-            # News summary
-            news_summary = tk.Label(
-                card_body,
-                text=news_item["summary"],
-                font=self.normal_font,
-                bg="white",
-                fg=self.colors["text_dark"],
-                wraplength=300,
-                justify=tk.LEFT
-            )
-            news_summary.pack(anchor=tk.W, pady=(0, 10))
-            
-            # Read more link
-            read_more = tk.Button(
-                card_body,
-                text="Read More →",
-                bg="white",
-                fg=self.colors["purple_medium"],
-                font=self.normal_font,
-                relief=tk.FLAT,
-                command=lambda item=news_item: self.read_more(item)
-            )
-            read_more.pack(anchor=tk.W)
-            
-            # Update column counter
-            col += 1
+        if type_filter != "All Types":
+            filtered_news = [n for n in filtered_news if n["type"] == type_filter]
+        
+        # Sort news
+        if sort_option == "Newest First":
+            # Note: In a real app, convert dates to datetime for proper sorting
+            pass
+        else:
+            filtered_news.reverse()
+        
+        # Display filtered news
+        if filtered_news:
+            self.display_news_items(filtered_news)
+        else:
+            st.info("No updates match your selected filters.")
     
+    def create_resources_page(self):
+        """Create resources page with tools and documents"""
+        st.markdown('<h2 class="section-title">Regulatory Resources</h2>', unsafe_allow_html=True)
+        
+        # Create tabs for different resource types
+        tabs = st.tabs(["Regulatory Database", "Compliance Tools", "Policy Analyses", "Events & Webinars"])
+        
+        with tabs[0]:
+            st.markdown("### Financial Regulations Database")
+            st.markdown("Search our comprehensive database of financial regulations from major jurisdictions worldwide.")
+            
+            col1, col2 = st.columns([0.7, 0.3])
+            with col1:
+                search_term = st.text_input("Search regulations", placeholder="e.g. ESG disclosure, crypto assets, AML")
+            
+            with col2:
+                jurisdiction = st.selectbox("Jurisdiction", ["All Jurisdictions", "USA", "EU", "UK", "China", "Singapore", "Australia"])
+            
+            if st.button("Search Database"):
+                if search_term:
+                    st.success(f"Searching for '{search_term}' in {jurisdiction if jurisdiction != 'All Jurisdictions' else 'all jurisdictions'}")
+                    st.info("This feature would connect to a regulatory database in a production application.")
+                else:
+                    st.error("Please enter a search term")
+        
+        with tabs[1]:
+            st.markdown("### Compliance Assessment Tools")
+            
+            tool = st.selectbox("Select Tool", [
+                "Regulatory Gap Analysis",
+                "Compliance Risk Calculator",
+                "Cross-Border Compliance Checker",
+                "AML/KYC Requirements Analyzer",
+                "Regulatory Change Management Tool"
+            ])
+            
+            st.markdown("#### Tool Description")
+            if tool == "Regulatory Gap Analysis":
+                st.markdown("""
+                This tool helps identify gaps in your organization's compliance with financial regulations.
+                Upload your current compliance documentation and select the jurisdictions you operate in to
+                receive a detailed analysis of regulatory gaps and recommended actions.
+                """)
+            else:
+                st.markdown("Description for the selected tool would appear here.")
+            
+            st.file_uploader("Upload Compliance Documentation (Optional)", type=["pdf", "docx", "xlsx"])
+            
+            if st.button("Launch Tool"):
+                st.info("This feature would launch the selected compliance tool in a production application.")
+        
+        with tabs[2]:
+            st.markdown("### Expert Policy Analyses")
+            
+            analyses = [
+                {
+                    "title": "Digital Asset Regulation Trends for 2025",
+                    "author": "Dr. Sarah Chen, Regulatory Policy Expert",
+                    "date": "March 5, 2025",
+                    "summary": "Analysis of evolving regulatory approaches to cryptocurrencies, NFTs, and digital assets across major financial jurisdictions."
+                },
+                {
+                    "title": "Climate Finance Disclosure Requirements: Global Comparison",
+                    "author": "Prof. James Wilson, University of Financial Studies",
+                    "date": "February 22, 2025",
+                    "summary": "Comparative study of climate-related financial disclosure requirements in the US, EU, UK, and Asia Pacific jurisdictions."
+                },
+                {
+                    "title": "Open Banking Regulatory Landscape",
+                    "author": "Maria Rodriguez, Former Banking Regulator",
+                    "date": "February 8, 2025",
+                    "summary": "Evaluation of open banking implementation and regulatory frameworks across different markets."
+                }
+            ]
+            
+            for analysis in analyses:
+                with st.expander(f"{analysis['title']} ({analysis['date']})"):
+                    st.markdown(f"**Author:** {analysis['author']}")
+                    st.markdown(f"**Summary:** {analysis['summary']}")
+                    if st.button("Read Full Analysis", key=f"read_{analysis['title']}"):
+                        st.info("This feature would open the full analysis document in a production application.")
+        
+        with tabs[3]:
+            st.markdown("### Upcoming Events & Webinars")
+            
+            events = [
+                {
+                    "title": "Global Financial Regulation Summit 2025",
+                    "date": "April 10-12, 2025",
+                    "location": "London, UK & Virtual",
+                    "description": "Annual gathering of financial regulators, compliance officers, and policy experts discussing emerging regulatory challenges."
+                },
+                {
+                    "title": "Webinar: Preparing for EU Digital Operational Resilience Act (DORA)",
+                    "date": "March 25, 2025",
+                    "location": "Online",
+                    "description": "Expert panel discussing implementation strategies for the EU's DORA framework for financial institutions."
+                },
+                {
+                    "title": "Workshop: Climate Risk Reporting Compliance",
+                    "date": "April 5, 2025",
+                    "location": "Singapore & Virtual",
+                    "description": "Hands-on workshop for compliance officers on meeting climate-related financial disclosure requirements."
+                }
+            ]
+            
+            for event in events:
+                st.markdown(f"""
+                <div class="news-card">
+                    <div class="news-header">
+                        <span>{event['date']}</span>
+                        <span class="region-tag">{event['location']}</span>
+                    </div>
+                    <div class="news-body">
+                        <h4 class="news-title">{event['title']}</h4>
+                        <p>{event['description']}</p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("### Subscribe to Events Calendar")
+            col1, col2 = st.columns([0.7, 0.3])
+            
+            with col1:
+                email = st.text_input("Email address", key="events_email")
+            
+            with col2:
+                if st.button("Subscribe to Events"):
+                    if email:
+                        st.success("You've successfully subscribed to our events calendar!")
+                    else:
+                        st.error("Please enter a valid email address")
+    
+    def create_about_page(self):
+        """Create about page with organization information"""
+        st.markdown('<h2 class="section-title">About Global Financial Regulations Hub</h2>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        The Global Financial Regulations Hub is a comprehensive platform designed to help financial professionals 
+        navigate the complex landscape of financial regulations worldwide. Our mission is to provide accurate, 
+        timely, and actionable regulatory information to compliance officers, legal professionals, policy makers, 
+        and financial executives.
+        """)
+        
+        # Team section
+        st.markdown("### Our Team")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            #### Dr. Eleanor Patel
+            **Chief Regulatory Officer**
+            
+            Former senior regulator with 20 years of experience in financial oversight across multiple jurisdictions.
+            """)
+        
+        with col2:
+            st.markdown("""
+            #### Michael Chang
+            **Director of Policy Analysis**
+            
+            Expert in financial policy with background in central banking and international regulatory cooperation.
+            """)
+            
+        with col3:
+            st.markdown("""
+            #### Dr. Sofia Mendes
+            **Head of Regulatory Technology**
+            
+            Specialist in regulatory technology and compliance automation systems for financial institutions.
+            """)
+        
+        # Methodology section
+        st.markdown("### Our Methodology")
+        
+        st.markdown("""
+        Our regulatory information is sourced from:
+        
+        - **Primary Sources**: Official regulatory texts, consultations, and guidance from regulatory authorities
+        - **Expert Analysis**: In-house and partner experts who analyze and contextualize regulatory developments
+        - **Industry Feedback**: Ongoing input from financial institutions and compliance professionals
+        - **Academic Research**: Partnerships with leading financial regulation research centers
+        
+        All information undergoes a rigorous verification process before publication to ensure accuracy and relevance.
+        """)
+        
+        # Contact section
+        st.markdown("### Contact Us")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **General Inquiries:**  
+            info@financialregulationshub.com
+            
+            **Subscription Services:**  
+            subscriptions@financialregulationshub.com
+            
+            **Press Inquiries:**  
+            press@financialregulationshub.com
+            """)
+            
+        with col2:
+            name = st.text_input("Name")
+            email = st.text_input("Email")
+            message = st.text_area("Message")
+            
+            if st.button("Send Message"):
+                if name and email and message:
+                    st.success("Thank you for your message. We'll respond shortly!")
+                else:
+                    st.error("Please complete all fields")
+    
+    def display_news_items(self, news_items):
+        """Display news items in a card format"""
+        for news in news_items:
+            st.markdown(f"""
+            <div class="news-card">
+                <div class="news-header">
+                    <span>{news['type']}</span>
+                    <span class="region-tag">{news['region']}</span>
+                </div>
+                <div class="news-body">
+                    <h4 class="news-title">{news['title']}</h4>
+                    <p class="news-date">{news['date']}</p>
+                    <p>{news['summary']}</p>
+                    <a href="#" class="read-more" onclick="alert('Reading full article!')">Read More →</a>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     def create_footer(self):
         """Create application footer with links and copyright"""
-        footer_frame = tk.Frame(self.root, bg=self.colors["purple_dark"], padx=15, pady=20)
-        footer_frame.pack(fill=tk.X)
-        
-        # Create content frame
-        content_frame = tk.Frame(footer_frame, bg=self.colors["purple_dark"])
-        content_frame.pack(fill=tk.X, pady=(0, 20))
-        
-        # Create four sections
-        sections = [
-            {
-                "title": "Regional Hubs",
-                "links": ["North America", "European Union", "United Kingdom", "Asia Pacific", "Middle East", "Latin America"]
-            },
-            {
-                "title": "Key Regulators",
-                "links": ["SEC (USA)", "ECB (EU)", "FCA (UK)", "PBOC (China)", "MAS (Singapore)", "FATF (Global)"]
-            },
-            {
-                "title": "Resources",
-                "links": ["Regulation Database", "Policy Analyses", "Expert Opinions", "Compliance Tools", "Events & Webinars"]
-            },
-            {
-                "title": "About Us",
-                "links": ["Our Team", "Methodology", "Contact Us", "Careers", "Terms of Service"]
-            }
-        ]
-        
-        # Create each section
-        for i, section in enumerate(sections):
-            section_frame = tk.Frame(content_frame, bg=self.colors["purple_dark"], padx=10)
-            section_frame.grid(row=0, column=i, sticky=tk.N)
+        st.markdown("""
+        <div class="footer">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                <div>
+                    <div class="footer-title">Regional Hubs</div>
+                    <div class="footer-links">
+        <div class="footer-links">
+                        <a href="#">North America</a>
+                        <a href="#">European Union</a>
+                        <a href="#">United Kingdom</a>
+                        <a href="#">Asia Pacific</a>
+                        <a href="#">Middle East</a>
+                    </div>
+                </div>
+                <div>
+                    <div class="footer-title">Resources</div>
+                    <div class="footer-links">
+                        <a href="#">Regulatory Database</a>
+                        <a href="#">Compliance Tools</a>
+                        <a href="#">Policy Analyses</a>
+                        <a href="#">Events & Webinars</a>
+                    </div>
+                </div>
+                <div>
+                    <div class="footer-title">Company</div>
+                    <div class="footer-links">
+                        <a href="#">About Us</a>
+                        <a href="#">Our Team</a>
+                        <a href="#">Careers</a>
+                        <a href="#">Contact Us</a>
+                    </div>
+                </div>
+                <div>
+                    <div class="footer-title">Legal</div>
+                    <div class="footer-links">
+                        <a href="#">Terms of Service</a>
+                        <a href="#">Privacy Policy</a>
+                        <a href="#">Cookie Policy</a>
+                        <a href="#">Disclaimer</a>
+                    </div>
+                </div>
+            </div>
             
-            # Title
-            title = tk.Label(
-                section_frame,
-                text=section["title"],
-                font=self.subtitle_font,
-                bg=self.colors["purple_dark"],
-                fg=self.colors["gold"]
-            )
-            title.pack(anchor=tk.W, pady=(0, 10))
+            <div class="footer-separator"></div>
             
-            # Links
-            for link in section["links"]:
-                link_button = tk.Button(
-                    section_frame,
-                    text=link,
-                    bg=self.colors["purple_dark"],
-                    fg=self.colors["text_light"],
-                    font=self.normal_font,
-                    relief=tk.FLAT,
-                    anchor=tk.W,
-                    command=lambda l=link: self.open_link(l)
-                )
-                link_button.pack(anchor=tk.W, pady=2)
-        
-        # Copyright
-        copyright_frame = tk.Frame(footer_frame, bg=self.colors["purple_dark"], padx=10, pady=10)
-        copyright_frame.pack(fill=tk.X)
-        
-        separator = ttk.Separator(copyright_frame, orient=tk.HORIZONTAL)
-        separator.pack(fill=tk.X, pady=(0, 10))
-        
-        copyright_text = tk.Label(
-            copyright_frame,
-            text="© 2025 Global Financial Regulations Hub. All rights reserved.",
-            font=self.small_font,
-            bg=self.colors["purple_dark"],
-            fg=self.colors["text_light"]
-        )
-        copyright_text.pack()
-    
-    # Event handlers and utility methods
-    def show_login_dialog(self):
-        """Show login/register dialog"""
-        login_window = tk.Toplevel(self.root)
-        login_window.title("Login / Register")
-        login_window.geometry("400x300")
-        login_window.configure(bg=self.colors["background"])
-        
-        # Center window
-        login_window.transient(self.root)
-        login_window.grab_set()
-        
-        # Title
-        title_label = tk.Label(
-            login_window,
-            text="Account Access",
-            font=self.title_font,
-            bg=self.colors["background"],
-            fg=self.colors["purple_dark"]
-        )
-        title_label.pack(pady=(20, 30))
-        
-        # Login form
-        form_frame = tk.Frame(login_window, bg=self.colors["background"])
-        form_frame.pack(fill=tk.X, padx=50)
-        
-        # Username
-        username_label = tk.Label(
-            form_frame,
-            text="Username:",
-            font=self.normal_font,
-            bg=self.colors["background"],
-            fg=self.colors["text_dark"]
-        )
-        username_label.pack(anchor=tk.W, pady=(0, 5))
-        
-        username_entry = tk.Entry(form_frame, font=self.normal_font, width=30)
-        username_entry.pack(fill=tk.X, pady=(0, 15))
-        
-        # Password
-        password_label = tk.Label(
-            form_frame,
-            text="Password:",
-            font=self.normal_font,
-            bg=self.colors["background"],
-            fg=self.colors["text_dark"]
-        )
-        password_label.pack(anchor=tk.W, pady=(0, 5))
-        
-        password_entry = tk.Entry(form_frame, font=self.normal_font, width=30, show="*")
-        password_entry.pack(fill=tk.X, pady=(0, 25))
-        
-        # Buttons
-        buttons_frame = tk.Frame(form_frame, bg=self.colors["background"])
-        buttons_frame.pack(fill=tk.X)
-        
-        login_btn = tk.Button(
-            buttons_frame,
-            text="Login",
-            bg=self.colors["purple_dark"],
-            fg=self.colors["text_light"],
-            font=self.normal_font,
-            padx=15,
-            pady=5,
-            relief=tk.FLAT,
-            command=lambda: self.login(username_entry.get(), password_entry.get(), login_window)
-        )
-        login_btn.pack(side=tk.LEFT, padx=(0, 10))
-        
-        register_btn = tk.Button(
-            buttons_frame,
-            text="Register",
-            bg=self.colors["gold"],
-            fg=self.colors["purple_dark"],
-            font=self.normal_font,
-            padx=15,
-            pady=5,
-            relief=tk.FLAT,
-            command=lambda: self.register(username_entry.get(), password_entry.get(), login_window)
-        )
-        register_btn.pack(side=tk.LEFT)
-    
-    def login(self, username, password, window):
-        """Handle login action"""
-        if not username or not password:
-            messagebox.showerror("Error", "Please enter both username and password.")
-            return
-        
-        # This is a mock login that would connect to a backend in a real app
-        messagebox.showinfo("Login Successful", f"Welcome back, {username}!")
-        window.destroy()
-    
-    def register(self, username, password, window):
-        """Handle register action"""
-        if not username or not password:
-            messagebox.showerror("Error", "Please enter both username and password.")
-            return
-        
-        # This is a mock registration that would connect to a backend in a real app
-        messagebox.showinfo("Registration Successful", f"Account created for {username}. You can now log in.")
-        window.destroy()
-    
-    def on_globe_click(self, event):
-        """Handle click on the globe map"""
-        # Get x, y coordinates of click
-        x, y = event.xdata, event.ydata
-        
-        if x is None or y is None:
-            return
-        
-        # Convert to lon/lat
-        lon, lat = self.m(x, y, inverse=True)
-        
-        # Find nearest region
-        closest_region = None
-        min_distance = float('inf')
-        
-        for region in self.regions:
-            r_lon = region["position"]["lng"]
-            r_lat = region["position"]["lat"]
-            
-            # Calculate distance (simple Euclidean)
-            dist = ((lon - r_lon) ** 2 + (lat - r_lat) ** 2) ** 0.5
-            
-            if dist < min_distance and dist < 20:  # Within certain threshold
-                min_distance = dist
-                closest_region = region
-        
-        if closest_region:
-            # Update info panel
-            self.region_title.config(text=closest_region["name"])
-            self.region_description.config(text=closest_region["description"])
-            
-            # Show info panel
-            self.info_panel.pack(side=tk.RIGHT, anchor=tk.NE, padx=20, pady=10)
-            
-            # Store selected region
-            self.selected_region = closest_region
-    
-    def view_region_details(self):
-        """Handle click on View Details button for a region"""
-        if hasattr(self, 'selected_region'):
-            messagebox.showinfo("Region Details", f"Viewing detailed regulations for {self.selected_region['name']}")
-    
-    def read_more(self, news_item):
-        """Handle click on Read More link for a news item"""
-        # In a real app, this would navigate to a detailed view
-        messagebox.showinfo("News Details", f"Reading full article: {news_item['title']}")
-    
-    def view_all_updates(self):
-        """Handle click on View All Updates link"""
-        messagebox.showinfo("All Updates", "Viewing all regulatory updates")
-    
-    def open_link(self, link_text):
-        """Handle click on a link in the footer"""
-        messagebox.showinfo("Navigation", f"Navigating to: {link_text}")
-
+            <div class="footer-copyright">
+                © {datetime.now().year} Global Financial Regulations Hub. All rights reserved.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = GlobalFinancialRegulationsHub(root)
-    root.mainloop()
+    app = GlobalFinancialRegulationsHub()
